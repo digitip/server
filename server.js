@@ -9,8 +9,8 @@ app.use(cors());  // To allow frontend to communicate with the backend
 app.use(bodyParser.json());
 
 const razorpay = new Razorpay({
-    key_id: 'rzp_test_0ybxoSsP3gjRad', // Replace with your Razorpay key
-    key_secret: 'vJ2iYhcEmJfrDOGad0FIfZYT' // Replace with your Razorpay secret key
+    key_id: 'rzp_test_0ybxoSsP3gjRad', // Replace with your Razorpay test key
+    key_secret: 'vJ2iYhcEmJfrDOGad0FIfZYT' // Replace with your Razorpay test secret key
 });
 
 // Root route to check if the server is up and running
@@ -25,7 +25,7 @@ app.post('/create-order', async (req, res) => {
     try {
         // Create an order with Razorpay
         const order = await razorpay.orders.create({
-            amount: totalAmount * 100, // Convert to paise
+            amount: totalAmount * 100, // Convert to paise (Razorpay uses paise)
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
             payment_capture: 1
