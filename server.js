@@ -8,6 +8,7 @@ const app = express();
 app.use(cors());  // To allow frontend to communicate with the backend
 app.use(bodyParser.json());
 
+// Set up Razorpay instance with your test API key and secret
 const razorpay = new Razorpay({
     key_id: 'rzp_test_0ybxoSsP3gjRad', // Replace with your Razorpay test key
     key_secret: 'vJ2iYhcEmJfrDOGad0FIfZYT' // Replace with your Razorpay test secret key
@@ -60,12 +61,10 @@ app.post('/webhook', (req, res) => {
         const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI ID
         const workerUpi = `worker-${workerId}@bank`; // Worker UPI ID
 
-        // Example: Log the information for debugging
+        // Debugging: Log the information for payment splitting
         console.log(`Splitting payment: Hotel UPI: ${hotelUpi}, Worker UPI: ${workerUpi}`);
 
-        // Razorpay Payouts API (this is just an example and requires Payouts API access)
-        // You can skip this part if you're unable to use Payouts API and handle it manually
-
+        // Razorpay Payouts API (ensure your account has Payouts enabled)
         razorpay.payouts.create({
             account_number: hotelUpi,  // Hotel UPI
             amount: billAmount * 100,  // Amount for hotel in paise
