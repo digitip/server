@@ -28,12 +28,12 @@ app.post('/create-order', async (req, res) => {
         const route = {
             recipients: [
                 {
-                    account: 'hotelupi@bank',  // Hotel UPI ID (Receiver)
+                    account: '9483278461@ptsbi',  // Hotel UPI ID (Receiver)
                     amount: billAmount * 100,  // Hotel portion in paise
                     notes: { purpose: 'Hotel payment' }
                 },
                 {
-                    account: `worker-${workerId}@bank`,  // Worker UPI ID (Receiver)
+                    account: '9481389731@axl',  // Worker UPI ID (Receiver)
                     amount: tipAmount * 100,  // Worker portion in paise
                     notes: { purpose: 'Tip payment' }
                 }
