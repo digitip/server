@@ -13,6 +13,11 @@ const razorpay = new Razorpay({
     key_secret: 'YmnNxMFjKAvinvmdpJ5jh6W2' // Replace with your Razorpay secret key
 });
 
+// Root route to check if the server is up and running
+app.get('/', (req, res) => {
+    res.send('Digitip Backend is Running');
+});
+
 // Create Razorpay order
 app.post('/create-order', async (req, res) => {
     const { totalAmount, billAmount, tipAmount, workerId } = req.body;
