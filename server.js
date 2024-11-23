@@ -1,6 +1,7 @@
 const express = require('express');
 const Razorpay = require('razorpay');
 const bodyParser = require('body-parser');
+const crypto = require('crypto');  // To handle HMAC signature verification
 const cors = require('cors');
 const app = express();
 
@@ -37,6 +38,60 @@ app.post('/create-order', async (req, res) => {
     }
 });
 
+// Webhook to handle Razorpay payment notifications
+app.post('/webhook', (req, res) => {
+    const secret = 'YmnNxMFjKAvinvmdpJ5jh6W2'; // Replace with your Razorpay secret key
+    const signature = req.headers['x-razorpay-signature'];
+    const body = JSON.stringify(req.body);
+    const expectedSignature = crypto.createHmac('sha256', secret)
+                                    .update(body)
+                                    .digest('hex');
+
+    if (signature === expectedSignature) {
+        console.log('Webhook verified:', req.body);
+
+        // Logic for payment splitting
+        const { billAmount, tipAmount, workerId } = req.body.payload.payment.entity.notes;
+        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI ID
+        const workerUpi = `worker-${workerId}@bank`; // Worker UPI ID
+
+        // Perform payment splitting using Razorpay Payouts API
+        // Example: Call Razorpay API to pay the hotel and worker
+        console.log(`Splitting payment: Hotel UPI: ${hotelUpi}, Worker UPI: ${workerUpi}`);
+        
+        // Example code to use Razorpay Payouts API (this needs your account to have access to Payouts API):
+        razorpay.payouts.create({
+            // Specify your payout details here
+            account_number: hotelUpi, // Hotel UPI
+            amount: billAmount * 100, // Amount for hotel in paise
+            currency: 'INR',
+            notes: { workerId }
+        }).then((payoutResponse) => {
+            console.log('Hotel payout response:', payoutResponse);
+        }).catch((error) => {
+            console.error('Error while processing payout to hotel:', error);
+        });
+
+        razorpay.payouts.create({
+            // Specify payout details for worker
+            account_number: workerUpi, // Worker UPI
+            amount: tipAmount * 100,  // Amount for worker in paise
+            currency: 'INR',
+            notes: { workerId }
+        }).then((payoutResponse) => {
+            console.log('Worker payout response:', payoutResponse);
+        }).catch((error) => {
+            console.error('Error while processing payout to worker:', error);
+        });
+
+    } else {
+        console.error('Invalid webhook signature');
+    }
+
+    res.status(200).send('OK');
+});
+
+// Start server
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
 });
