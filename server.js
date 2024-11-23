@@ -55,15 +55,15 @@ app.post('/webhook', (req, res) => {
         const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI ID
         const workerUpi = `worker-${workerId}@bank`; // Worker UPI ID
 
-        // Perform payment splitting using Razorpay Payouts API
-        // Example: Call Razorpay API to pay the hotel and worker
+        // Example: Log the information for debugging
         console.log(`Splitting payment: Hotel UPI: ${hotelUpi}, Worker UPI: ${workerUpi}`);
-        
-        // Example code to use Razorpay Payouts API (this needs your account to have access to Payouts API):
+
+        // Razorpay Payouts API (this is just an example and requires Payouts API access)
+        // You can skip this part if you're unable to use Payouts API and handle it manually
+
         razorpay.payouts.create({
-            // Specify your payout details here
-            account_number: hotelUpi, // Hotel UPI
-            amount: billAmount * 100, // Amount for hotel in paise
+            account_number: hotelUpi,  // Hotel UPI
+            amount: billAmount * 100,  // Amount for hotel in paise
             currency: 'INR',
             notes: { workerId }
         }).then((payoutResponse) => {
@@ -73,9 +73,8 @@ app.post('/webhook', (req, res) => {
         });
 
         razorpay.payouts.create({
-            // Specify payout details for worker
-            account_number: workerUpi, // Worker UPI
-            amount: tipAmount * 100,  // Amount for worker in paise
+            account_number: workerUpi,  // Worker UPI
+            amount: tipAmount * 100,    // Amount for worker in paise
             currency: 'INR',
             notes: { workerId }
         }).then((payoutResponse) => {
@@ -86,12 +85,15 @@ app.post('/webhook', (req, res) => {
 
     } else {
         console.error('Invalid webhook signature');
+        res.status(400).send('Invalid signature');
+        return;
     }
 
     res.status(200).send('OK');
 });
 
 // Start server
-app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+const port = process.env.PORT || 3000; // Make sure to use the correct port
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
