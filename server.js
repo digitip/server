@@ -1,11 +1,20 @@
 const express = require('express');
 const Razorpay = require('razorpay');
 const bodyParser = require('body-parser');
-const crypto = require('crypto');  // To handle HMAC signature verification
+const crypto = require('crypto'); // To handle HMAC signature verification
 const cors = require('cors');
+const admin = require('firebase-admin'); // Firebase Admin SDK
 const app = express();
 
-app.use(cors());  // To allow frontend to communicate with the backend
+// Initialize Firebase Admin SDK
+const serviceAccount = require('./path-to-your-service-account-file.json'); // Replace with your service account path
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://your-database-name.firebaseio.com" // Replace with your Firestore database URL
+});
+const db = admin.firestore();
+
+app.use(cors()); // To allow frontend to communicate with the backend
 app.use(bodyParser.json());
 
 // Set up Razorpay instance with your test API key and secret
@@ -21,7 +30,7 @@ app.get('/', (req, res) => {
 
 // Create Razorpay order
 app.post('/create-order', async (req, res) => {
-    const { totalAmount, billAmount, tipAmount, workerId } = req.body;
+    const { totalAmount } = req.body;
 
     try {
         // Create an order with Razorpay
@@ -37,106 +46,69 @@ app.post('/create-order', async (req, res) => {
             success: true,
             order_id: order.id
         });
-
     } catch (error) {
         console.error("Error creating Razorpay order", error);
         res.json({ success: false, message: error.message });
     }
 });
 
-// Webhook to handle Razorpay payment notifications
-app.post('/webhook', (req, res) => {
-    const secret = 'vJ2iYhcEmJfrDOGad0FIfZYT'; // Replace with your Razorpay secret key
-    const signature = req.headers['x-razorpay-signature'];
-    const body = JSON.stringify(req.body);
-    const expectedSignature = crypto.createHmac('sha256', secret)
-                                    .update(body)
-                                    .digest('hex');
+// Payment status route with dynamic Firestore queries
+app.post('/payment-status', async (req, res) => {
+    const {
+        razorpay_payment_id,
+        razorpay_order_id,
+        razorpay_signature,
+        hotel_name, // Passed from the QR code
+        workerId, // Entered by the user
+        billAmount,
+        tipAmount
+    } = req.body;
 
-    if (signature === expectedSignature) {
-        console.log('Webhook verified:', req.body);
+    try {
+        // Verify Razorpay signature
+        const secret = 'vJ2iYhcEmJfrDOGad0FIfZYT'; // Replace with your Razorpay secret key
+        const hmac = crypto.createHmac('sha256', secret);
+        const expectedSignature = hmac.update(razorpay_order_id + "|" + razorpay_payment_id).digest('hex');
 
-        // Logic for payment splitting
-        const { billAmount, tipAmount, workerId } = req.body.payload.payment.entity.notes;
-        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI ID
-        const workerUpi = `worker-${workerId}@bank`; // Worker UPI ID
+        if (razorpay_signature !== expectedSignature) {
+            return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        }
 
-        // Debugging: Log the information for payment splitting
-        console.log(`Splitting payment: Hotel UPI: ${hotelUpi}, Worker UPI: ${workerUpi}`);
-
-        // Razorpay Payouts API (ensure your account has Payouts enabled)
-        razorpay.payouts.create({
-            account_number: hotelUpi,  // Hotel UPI
-            amount: billAmount * 100,  // Amount for hotel in paise
-            currency: 'INR',
-            notes: { workerId }
-        }).then((payoutResponse) => {
-            console.log('Hotel payout response:', payoutResponse);
-        }).catch((error) => {
-            console.error('Error while processing payout to hotel:', error);
-        });
-
-        razorpay.payouts.create({
-            account_number: workerUpi,  // Worker UPI
-            amount: tipAmount * 100,    // Amount for worker in paise
-            currency: 'INR',
-            notes: { workerId }
-        }).then((payoutResponse) => {
-            console.log('Worker payout response:', payoutResponse);
-        }).catch((error) => {
-            console.error('Error while processing payout to worker:', error);
-        });
-
-    } else {
-        console.error('Invalid webhook signature');
-        res.status(400).send('Invalid signature');
-        return;
-    }
-
-    res.status(200).send('OK');
-});
-
-// Payment status route to handle payment confirmation from frontend
-app.post('/payment-status', (req, res) => {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, workerId, billAmount, tipAmount } = req.body;
-
-    const secret = 'vJ2iYhcEmJfrDOGad0FIfZYT'; // Razorpay secret key
-    const hmac = crypto.createHmac('sha256', secret);
-    const expectedSignature = hmac.update(razorpay_order_id + "|" + razorpay_payment_id).digest('hex');
-
-    if (razorpay_signature === expectedSignature) {
         console.log('Payment verification successful');
 
-        // Logic for splitting the payment (hotel and worker)
-        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI
-        const workerUpi = `worker-${workerId}@bank`; // Worker UPI
+        // Fetch hotel UPI from Firestore
+        const hotelDoc = await db.collection('ownerInfo').doc(hotelName).get();
+        if (!hotelDoc.exists) {
+            return res.status(404).json({ success: false, message: 'Hotel not found' });
+        }
+        const upiId = hotelDoc.data().upi_id;
 
-        razorpay.payouts.create({
-            account_number: hotelUpi,
-            amount: billAmount * 100, // Hotel amount in paise
+        // Fetch worker UPI from Firestore
+        const workerDoc = await db.collection('workers').doc(hotelName).get();
+        if (!workerDoc.exists) {
+            return res.status(404).json({ success: false, message: 'Worker not found' });
+        }
+        const workerUpi = workerDoc.data().upi_id;
+
+        // Debugging logs
+        console.log(`Hotel UPI: ${upiId}, Worker UPI: ${workerUpi}`);
+
+        // Process payouts (requires Razorpay Payouts API access)
+        await razorpay.payouts.create({
+            account_number: upiId,
+            amount: billAmount * 100, // Convert to paise
             currency: 'INR'
-        })
-        .then(() => {
-            razorpay.payouts.create({
-                account_number: workerUpi,
-                amount: tipAmount * 100, // Worker tip in paise
-                currency: 'INR'
-            })
-            .then(() => {
-                res.json({ success: true, message: 'Payment split and payout completed' });
-            })
-            .catch(error => {
-                console.error('Error processing worker payout:', error);
-                res.json({ success: false, message: 'Failed to process worker payout' });
-            });
-        })
-        .catch(error => {
-            console.error('Error processing hotel payout:', error);
-            res.json({ success: false, message: 'Failed to process hotel payout' });
         });
-    } else {
-        console.error('Invalid signature');
-        res.status(400).json({ success: false, message: 'Invalid payment signature' });
+        await razorpay.payouts.create({
+            account_number: workerUpi,
+            amount: tipAmount * 100, // Convert to paise
+            currency: 'INR'
+        });
+
+        res.json({ success: true, message: 'Payment split and payouts completed' });
+    } catch (error) {
+        console.error('Error processing payment:', error);
+        res.json({ success: false, message: error.message });
     }
 });
 
