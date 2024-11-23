@@ -9,8 +9,8 @@ app.use(cors());  // To allow frontend to communicate with the backend
 app.use(bodyParser.json());
 
 const razorpay = new Razorpay({
-    key_id: 'rzp_live_6oBi8IT9vcXsF0', // Replace with your Razorpay key
-    key_secret: 'YmnNxMFjKAvinvmdpJ5jh6W2' // Replace with your Razorpay secret key
+    key_id: 'rzp_test_0ybxoSsP3gjRad', // Replace with your Razorpay key
+    key_secret: 'vJ2iYhcEmJfrDOGad0FIfZYT' // Replace with your Razorpay secret key
 });
 
 // Root route to check if the server is up and running
@@ -45,7 +45,7 @@ app.post('/create-order', async (req, res) => {
 
 // Webhook to handle Razorpay payment notifications
 app.post('/webhook', (req, res) => {
-    const secret = 'YmnNxMFjKAvinvmdpJ5jh6W2'; // Replace with your Razorpay secret key
+    const secret = 'vJ2iYhcEmJfrDOGad0FIfZYT'; // Replace with your Razorpay secret key
     const signature = req.headers['x-razorpay-signature'];
     const body = JSON.stringify(req.body);
     const expectedSignature = crypto.createHmac('sha256', secret)
@@ -101,7 +101,7 @@ app.post('/webhook', (req, res) => {
 app.post('/payment-status', (req, res) => {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, workerId, billAmount, tipAmount } = req.body;
 
-    const secret = 'YmnNxMFjKAvinvmdpJ5jh6W2'; // Razorpay secret key
+    const secret = 'vJ2iYhcEmJfrDOGad0FIfZYT'; // Razorpay secret key
     const hmac = crypto.createHmac('sha256', secret);
     const expectedSignature = hmac.update(razorpay_order_id + "|" + razorpay_payment_id).digest('hex');
 
