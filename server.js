@@ -7,10 +7,10 @@ const admin = require('firebase-admin'); // Firebase Admin SDK
 const app = express();
 
 // Initialize Firebase Admin SDK
-const serviceAccount = require('./path-to-your-service-account-file.json'); // Replace with your service account path
+const serviceAccount = require('./digitip-c9a79-firebase-adminsdk-bkuwa-496e9ce533.json'); // Replace with your actual service account file
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://your-database-name.firebaseio.com" // Replace with your Firestore database URL
+    databaseURL: "https://digitip-c9a79.firebaseio.com" // Replace with your Firebase database URL
 });
 const db = admin.firestore();
 
@@ -58,8 +58,8 @@ app.post('/payment-status', async (req, res) => {
         razorpay_payment_id,
         razorpay_order_id,
         razorpay_signature,
-        hotel_name, // Passed from the QR code
-        workerId, // Entered by the user
+        hotelName, // Passed from the QR code
+        workerId,   // Entered by the user
         billAmount,
         tipAmount
     } = req.body;
@@ -76,19 +76,21 @@ app.post('/payment-status', async (req, res) => {
 
         console.log('Payment verification successful');
 
-        // Fetch hotel UPI from Firestore
-        const hotelDoc = await db.collection('ownerInfo').doc(hotelName).get();
-        if (!hotelDoc.exists) {
+        // Fetch hotel UPI ID from Firestore
+        const hotelSnapshot = await db.collection('ownerInfo').where('hotelName', '==', hotelName).get();
+        if (hotelSnapshot.empty) {
             return res.status(404).json({ success: false, message: 'Hotel not found' });
         }
-        const upiId = hotelDoc.data().upi_id;
+        const hotelData = hotelSnapshot.docs[0].data();
+        const upiId = hotelData.upi_id;
 
-        // Fetch worker UPI from Firestore
-        const workerDoc = await db.collection('workers').doc(hotelName).get();
-        if (!workerDoc.exists) {
+        // Fetch worker UPI ID from Firestore
+        const workerSnapshot = await db.collection('workers').where('hotelName', '==', hotelName).get();
+        if (workerSnapshot.empty) {
             return res.status(404).json({ success: false, message: 'Worker not found' });
         }
-        const workerUpi = workerDoc.data().upi_id;
+        const workerData = workerSnapshot.docs[0].data();
+        const workerUpi = workerData.upi_id;
 
         // Debugging logs
         console.log(`Hotel UPI: ${upiId}, Worker UPI: ${workerUpi}`);
@@ -97,12 +99,16 @@ app.post('/payment-status', async (req, res) => {
         await razorpay.payouts.create({
             account_number: upiId,
             amount: billAmount * 100, // Convert to paise
-            currency: 'INR'
+            currency: 'INR',
+            mode: 'UPI',
+            purpose: 'payout'
         });
         await razorpay.payouts.create({
             account_number: workerUpi,
             amount: tipAmount * 100, // Convert to paise
-            currency: 'INR'
+            currency: 'INR',
+            mode: 'UPI',
+            purpose: 'payout'
         });
 
         res.json({ success: true, message: 'Payment split and payouts completed' });
