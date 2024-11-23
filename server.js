@@ -92,8 +92,51 @@ app.post('/webhook', (req, res) => {
     res.status(200).send('OK');
 });
 
-// Start server
-const port = process.env.PORT || 10000; // Make sure to use the correct port
+// Payment status route to handle payment confirmation from frontend
+app.post('/payment-status', (req, res) => {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, workerId, billAmount, tipAmount } = req.body;
+
+    const secret = 'YmnNxMFjKAvinvmdpJ5jh6W2'; // Razorpay secret key
+    const hmac = crypto.createHmac('sha256', secret);
+    const expectedSignature = hmac.update(razorpay_order_id + "|" + razorpay_payment_id).digest('hex');
+
+    if (razorpay_signature === expectedSignature) {
+        console.log('Payment verification successful');
+
+        // Logic for splitting the payment (hotel and worker)
+        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI
+        const workerUpi = `worker-${workerId}@bank`; // Worker UPI
+
+        razorpay.payouts.create({
+            account_number: hotelUpi,
+            amount: billAmount * 100, // Hotel amount in paise
+            currency: 'INR'
+        })
+        .then(() => {
+            razorpay.payouts.create({
+                account_number: workerUpi,
+                amount: tipAmount * 100, // Worker tip in paise
+                currency: 'INR'
+            })
+            .then(() => {
+                res.json({ success: true, message: 'Payment split and payout completed' });
+            })
+            .catch(error => {
+                console.error('Error processing worker payout:', error);
+                res.json({ success: false, message: 'Failed to process worker payout' });
+            });
+        })
+        .catch(error => {
+            console.error('Error processing hotel payout:', error);
+            res.json({ success: false, message: 'Failed to process hotel payout' });
+        });
+    } else {
+        console.error('Invalid signature');
+        res.status(400).json({ success: false, message: 'Invalid payment signature' });
+    }
+});
+
+const port = process.env.PORT || 5000;
 app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+    console.log(`Server running on port ${port}`);
 });
