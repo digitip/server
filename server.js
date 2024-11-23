@@ -93,7 +93,7 @@ app.post('/webhook', (req, res) => {
 });
 
 // Start server
-const port = process.env.PORT || 3000; // Make sure to use the correct port
+const port = process.env.PORT || 10000; // Make sure to use the correct port
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
