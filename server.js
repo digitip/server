@@ -19,44 +19,23 @@ app.get('/', (req, res) => {
     res.send('Digitip Backend is Running');
 });
 
-// Create Razorpay order with routes (payment splitting)
+// Create Razorpay order
 app.post('/create-order', async (req, res) => {
     const { totalAmount, billAmount, tipAmount, workerId } = req.body;
 
     try {
-        // Define the route to split payment
-        const route = {
-            recipients: [
-                {
-                    account: 'hotelupi@bank',  // Hotel UPI ID (Receiver)
-                    amount: billAmount * 100,  // Hotel portion in paise
-                    notes: { purpose: 'Hotel payment' }
-                },
-                {
-                    account: `worker-${workerId}@bank`,  // Worker UPI ID (Receiver)
-                    amount: tipAmount * 100,  // Worker portion in paise
-                    notes: { purpose: 'Tip payment' }
-                }
-            ]
-        };
-
-        // Create the payment route
-        const routeResponse = await razorpay.routes.create(route);
-
-        // Create a Razorpay order
+        // Create an order with Razorpay
         const order = await razorpay.orders.create({
-            amount: totalAmount * 100, // Total amount to be paid by the customer (in paise)
+            amount: totalAmount * 100, // Convert to paise (Razorpay uses paise)
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
-            payment_capture: 1,
-            notes: routeResponse // Attach route info to order
+            payment_capture: 1
         });
 
         // Send the order ID back to the client
         res.json({
             success: true,
-            order_id: order.id,
-            route_id: routeResponse.id  // Sending route ID for tracking
+            order_id: order.id
         });
 
     } catch (error) {
@@ -77,24 +56,44 @@ app.post('/webhook', (req, res) => {
     if (signature === expectedSignature) {
         console.log('Webhook verified:', req.body);
 
-        // Payment status update logic
-        const { payment } = req.body.payload;
+        // Logic for payment splitting
+        const { billAmount, tipAmount, workerId } = req.body.payload.payment.entity.notes;
+        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI ID
+        const workerUpi = `worker-${workerId}@bank`; // Worker UPI ID
 
-        if (payment.entity.status === 'captured') {
-            console.log('Payment captured successfully!');
+        // Debugging: Log the information for payment splitting
+        console.log(`Splitting payment: Hotel UPI: ${hotelUpi}, Worker UPI: ${workerUpi}`);
 
-            // Payment has been successfully captured and the amounts have been transferred to the hotel and worker
-            res.status(200).send('OK');
-        } else {
-            console.log('Payment failed');
-            res.status(400).send('Payment failed');
-        }
+        // Razorpay Payouts API (ensure your account has Payouts enabled)
+        razorpay.payouts.create({
+            account_number: hotelUpi,  // Hotel UPI
+            amount: billAmount * 100,  // Amount for hotel in paise
+            currency: 'INR',
+            notes: { workerId }
+        }).then((payoutResponse) => {
+            console.log('Hotel payout response:', payoutResponse);
+        }).catch((error) => {
+            console.error('Error while processing payout to hotel:', error);
+        });
+
+        razorpay.payouts.create({
+            account_number: workerUpi,  // Worker UPI
+            amount: tipAmount * 100,    // Amount for worker in paise
+            currency: 'INR',
+            notes: { workerId }
+        }).then((payoutResponse) => {
+            console.log('Worker payout response:', payoutResponse);
+        }).catch((error) => {
+            console.error('Error while processing payout to worker:', error);
+        });
 
     } else {
         console.error('Invalid webhook signature');
         res.status(400).send('Invalid signature');
         return;
     }
+
+    res.status(200).send('OK');
 });
 
 // Payment status route to handle payment confirmation from frontend
@@ -107,7 +106,34 @@ app.post('/payment-status', (req, res) => {
 
     if (razorpay_signature === expectedSignature) {
         console.log('Payment verification successful');
-        res.json({ success: true, message: 'Payment split and payout completed' });
+
+        // Logic for splitting the payment (hotel and worker)
+        const hotelUpi = 'hotelupi@bank'; // Replace with actual hotel UPI
+        const workerUpi = `worker-${workerId}@bank`; // Worker UPI
+
+        razorpay.payouts.create({
+            account_number: hotelUpi,
+            amount: billAmount * 100, // Hotel amount in paise
+            currency: 'INR'
+        })
+        .then(() => {
+            razorpay.payouts.create({
+                account_number: workerUpi,
+                amount: tipAmount * 100, // Worker tip in paise
+                currency: 'INR'
+            })
+            .then(() => {
+                res.json({ success: true, message: 'Payment split and payout completed' });
+            })
+            .catch(error => {
+                console.error('Error processing worker payout:', error);
+                res.json({ success: false, message: 'Failed to process worker payout' });
+            });
+        })
+        .catch(error => {
+            console.error('Error processing hotel payout:', error);
+            res.json({ success: false, message: 'Failed to process hotel payout' });
+        });
     } else {
         console.error('Invalid signature');
         res.status(400).json({ success: false, message: 'Invalid payment signature' });
