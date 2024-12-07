@@ -5,40 +5,60 @@ const admin = require('firebase-admin');
 // Initialize Firebase Admin SDK
 const serviceAccount = require('./firebase-service-account.json');
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert(serviceAccount),
 });
 
-// Initialize Express app
 const app = express();
 app.use(bodyParser.json());
 
-// Endpoint to process payment
-app.post('/process-payment', async (req, res) => {
-    const { hotelName, hotelUPI, workerId, tipAmount, billAmount } = req.body;
+// Payment endpoint
+app.post('/payment', async (req, res) => {
+  const { hotelName, billAmount, tipAmount, workerId } = req.body;
 
-    if (!hotelName || !hotelUPI || !workerId || !tipAmount || !billAmount) {
-        return res.status(400).send({ error: 'Invalid input data provided' });
-    }
+  if (!hotelName || !billAmount || !tipAmount || !workerId) {
+    return res.status(400).send({ error: 'Invalid data provided' });
+  }
 
-    try {
-        const db = admin.firestore();
-        await db.collection('payments').add({
-            hotelName: hotelName,
-            billAmount: billAmount,
-            tipAmount: tipAmount,
-            workerId: workerId,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
+  try {
+    const db = admin.firestore();
 
-        res.status(200).send({ message: 'Payment processed successfully' });
-    } catch (error) {
-        console.error('Error saving payment data:', error);
-        res.status(500).send({ error: 'Error processing payment' });
-    }
+    // Save payment details
+    await db.collection('payments').add({
+      hotelName,
+      billAmount: parseFloat(billAmount),
+      tipAmount: parseFloat(tipAmount),
+      workerId,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Send notifications
+    const ownerNotification = {
+      notification: {
+        title: 'Bill Payment Received',
+        body: `₹${billAmount} credited to hotel.`,
+      },
+      topic: `owner-${hotelName}`,
+    };
+
+    const workerNotification = {
+      notification: {
+        title: 'Tip Received',
+        body: `₹${tipAmount} credited to worker ${workerId}.`,
+      },
+      topic: `worker-${workerId}`,
+    };
+
+    await admin.messaging().sendAll([ownerNotification, workerNotification]);
+
+    res.send({ message: 'Payment processed successfully' });
+  } catch (err) {
+    console.error('Error processing payment:', err);
+    res.status(500).send({ error: 'Error processing payment' });
+  }
 });
 
-// Start the server
-const PORT = 3000;
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
