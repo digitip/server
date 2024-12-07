@@ -11,7 +11,7 @@ admin.initializeApp({
 
 const app = express();
 app.use(cors({
-  origin: '*', // Allow all origins (adjust for security as needed)
+  origin: 'https://digitip-payment.onrender.com', // Allow all origins (adjust for security as needed)
 }));
 app.use(bodyParser.json());
 
