@@ -11,6 +11,12 @@ admin.initializeApp({
 const app = express();
 app.use(bodyParser.json());
 
+// Root route for server health check
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+});
+
+// Payment processing route
 app.post('/payment', async (req, res) => {
   const { hotelName, billAmount, tipAmount, workerId } = req.body;
 
@@ -32,12 +38,7 @@ app.post('/payment', async (req, res) => {
     console.error('Error processing payment:', err);
     res.status(500).send({ error: 'Error processing payment' });
   }
-  app.get('/', (req, res) => {
-    res.send('Server is running!');
 });
-
-});
-
 
 // Start the server
 const PORT = process.env.PORT || 3000;
