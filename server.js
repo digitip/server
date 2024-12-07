@@ -12,34 +12,29 @@ const app = express();
 app.use(bodyParser.json());
 
 // Endpoint to handle payment processing
-app.post('/process-payment', (req, res) => {
+app.post('/process-payment', async (req, res) => {
     const { hotelName, hotelUPI, workerId, tipAmount, billAmount } = req.body;
 
     if (!hotelName || !hotelUPI || !workerId || !tipAmount || !billAmount) {
         return res.status(400).send({ error: 'Invalid data provided' });
     }
 
-    // Log payment details for verification
-    console.log(`Processing payment for Hotel: ${hotelName}`);
-    console.log(`Bill Amount: ₹${billAmount}, Tip Amount: ₹${tipAmount}, Worker ID: ${workerId}`);
+    try {
+        // Save payment data to Firestore
+        const db = admin.firestore();
+        await db.collection('payments').add({
+            hotelName: hotelName,
+            billAmount: billAmount,
+            tipAmount: tipAmount,
+            workerId: workerId,
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
 
-    // Save payment data to Firestore
-    const db = admin.firestore();
-    const paymentRef = db.collection('payments').doc();
-    paymentRef.set({
-        hotelName: hotelName,
-        billAmount: billAmount,
-        tipAmount: tipAmount,
-        workerId: workerId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp()
-    })
-    .then(() => {
-        res.send({ message: 'Payment processed successfully' });
-    })
-    .catch((error) => {
+        res.status(200).send({ message: 'Payment processed successfully' });
+    } catch (error) {
         console.error('Error saving payment data:', error);
         res.status(500).send({ error: 'Error processing payment' });
-    });
+    }
 });
 
 // Start the server
