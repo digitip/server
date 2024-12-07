@@ -32,6 +32,10 @@ app.post('/payment', async (req, res) => {
     console.error('Error processing payment:', err);
     res.status(500).send({ error: 'Error processing payment' });
   }
+  app.get('/', (req, res) => {
+    res.send('Server is running!');
+});
+
 });
 
 
