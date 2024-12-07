@@ -56,9 +56,6 @@ app.post('/payment', async (req, res) => {
     res.status(500).send({ error: 'Error processing payment' });
   }
 });
-const cors = require('cors');
-app.use(cors({ origin: 'https://digitip-payment.onrender.com' }));
-
 
 // Start server
 const PORT = process.env.PORT || 3000;
