@@ -1,6 +1,8 @@
+// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
+const cors = require('cors'); // For handling CORS
 
 // Initialize Firebase Admin SDK
 const serviceAccount = require('./path-to-service-account.json');
@@ -9,14 +11,9 @@ admin.initializeApp({
 });
 
 const app = express();
+app.use(cors()); // Allow CORS for cross-origin requests
 app.use(bodyParser.json());
 
-// Root route for server health check
-app.get('/', (req, res) => {
-  res.send('Server is running!');
-});
-
-// Payment processing route
 app.post('/payment', async (req, res) => {
   const { hotelName, billAmount, tipAmount, workerId } = req.body;
 
@@ -40,7 +37,6 @@ app.post('/payment', async (req, res) => {
   }
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
