@@ -1,18 +1,17 @@
-// server.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
-const cors = require('cors'); 
+const cors = require('cors'); // For handling CORS
 
-// Initialize Firebase Admin SDK
-const serviceAccount = require('firebase-service-account.json'); // Replace with your actual path to the service account JSON file
+// Initialize Firebase Admin SDK using environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
 const app = express();
 app.use(cors({
-  origin: 'https://digitip-payment.onrender.com', // Allow all origins (adjust for security as needed)
+  origin: '*', // Allow all origins (adjust for security as needed)
 }));
 app.use(bodyParser.json());
 
