@@ -13,46 +13,57 @@ const app = express();
 app.use(bodyParser.json());
 
 // Endpoint to simulate payment
-app.post('/payment', (req, res) => {
+app.post('/payment', async (req, res) => {
   const { hotelName, hotelUPI, workerId, tipAmount, billAmount } = req.body;
 
   if (!hotelName || !hotelUPI || !workerId || !tipAmount || !billAmount) {
     return res.status(400).send({ error: 'Invalid data provided' });
   }
 
-  // Simulate processing payment
+  // Log the payment details
   console.log(`Processing payment for Hotel: ${hotelName}`);
   console.log(`Bill Amount: ₹${billAmount}, Tip Amount: ₹${tipAmount}, Worker ID: ${workerId}`);
 
-  // Notify owner
-  const ownerNotification = {
-    notification: {
-      title: 'Bill Payment Received',
-      body: `₹${billAmount} has been credited to your hotel account.`,
-    },
-    topic: `owner-${hotelName}`,
-  };
-
-  // Notify worker
-  const workerNotification = {
-    notification: {
-      title: 'Tip Received',
-      body: `₹${tipAmount} has been credited to your account.`,
-    },
-    topic: `worker-${workerId}`,
-  };
-
-  // Send notifications
-  admin.messaging()
-    .sendMulticast([ownerNotification, workerNotification])
-    .then((response) => {
-      console.log('Notifications sent:', response);
-      res.send({ message: 'Payment processed successfully' });
-    })
-    .catch((error) => {
-      console.error('Error sending notifications:', error);
-      res.status(500).send({ error: 'Error sending notifications' });
+  try {
+    // Save payment details in Firestore under "Payments" collection
+    await admin.firestore().collection('Payments').add({
+      hotelName,
+      billAmount: parseFloat(billAmount),
+      tipAmount: parseFloat(tipAmount),
+      workerId,
+      date: new Date().toISOString(),
     });
+
+    console.log('Payment details saved to Firestore.');
+
+    // Notify the owner
+    const ownerNotification = {
+      notification: {
+        title: 'Bill Payment Received',
+        body: `₹${billAmount} has been credited to your hotel account.`,
+      },
+      topic: `owner-${hotelName}`,
+    };
+
+    // Notify the worker
+    const workerNotification = {
+      notification: {
+        title: 'Tip Received',
+        body: `₹${tipAmount} has been credited to your account.`,
+      },
+      topic: `worker-${workerId}`,
+    };
+
+    // Send notifications
+    await admin.messaging().sendMulticast([ownerNotification, workerNotification]);
+    console.log('Notifications sent successfully.');
+
+    res.send({ message: 'Payment processed successfully' });
+
+  } catch (error) {
+    console.error('Error processing payment:', error);
+    res.status(500).send({ error: 'Error processing payment' });
+  }
 });
 
 // Start the server
