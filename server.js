@@ -24,9 +24,12 @@ const db = admin.firestore();
 
 app.post('/savePayment', async (req, res) => {
   try {
+    // Extract the necessary fields from the request body
     const { billAmount, tipAmount, workerID, hotelName } = req.body;
+
+    // Validate that all necessary fields are present
     if (!billAmount || !tipAmount || !workerID || !hotelName) {
-      throw new Error('Missing required fields');
+      return res.status(400).send({ error: 'Missing required fields' });
     }
 
     // Log the incoming request for debugging
@@ -41,8 +44,10 @@ app.post('/savePayment', async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    // Respond with a success message
     res.status(200).send({ message: 'Payment saved successfully' });
   } catch (error) {
+    // Log the detailed error for debugging
     console.error('Error during payment save:', error);
     res.status(500).send({ error: 'Internal Server Error' });
   }
