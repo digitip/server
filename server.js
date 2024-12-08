@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');  // Add this line
+const cors = require('cors');
 const admin = require('firebase-admin');
 const path = require('path');
 
@@ -17,15 +17,18 @@ app.use(cors({
 const serviceAccount = require(path.join(__dirname, 'service.json'));
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const db = admin.firestore();
 
-
 app.post('/savePayment', async (req, res) => {
   try {
+    // Validate the request body
     const { billAmount, tipAmount, workerID, hotelName } = req.body;
+    if (!billAmount || !tipAmount || !workerID || !hotelName) {
+      throw new Error('Missing required fields');
+    }
 
     // Save payment details in Firestore
     await db.collection('payments').add({
@@ -34,10 +37,8 @@ app.post('/savePayment', async (req, res) => {
       workerID,
       hotelName,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
-  
-    if (!req.body || !req.body.requiredField) {
-      throw new Error('Missing required field');
-    }
+    });
+
     // Process the request
     res.status(200).send({ message: 'Payment saved successfully' });
   } catch (error) {
@@ -45,7 +46,6 @@ app.post('/savePayment', async (req, res) => {
     res.status(500).send({ error: 'Internal Server Error' });
   }
 });
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
