@@ -8,7 +8,7 @@ const port = 3001; // You can change this if needed
 
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'http://localhost:8080' // Change this to the origin you want to allow
+    origin: 'https://digitip-payment.onrender.com' // Change this to the origin you want to allow
 }));
 
 
