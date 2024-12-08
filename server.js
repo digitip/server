@@ -1,10 +1,18 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const admin = require('firebase-admin');
 const path = require('path');
 
 const app = express();
 app.use(bodyParser.json());
+
+// Use cors middleware and specify the frontend domain
+app.use(cors({
+  origin: 'https://digitip-payment.onrender.com', // Update this to your frontend URL
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
 
 const serviceAccount = require(path.join(__dirname, 'service.json'));
 
