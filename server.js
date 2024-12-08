@@ -4,16 +4,16 @@ const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
 
 const app = express();
-const port = process.env.PORT || 3001; // Using an environment variable for flexibility
+const port = process.env.PORT || 3001; // Use an environment variable for flexibility
 
 // Middleware
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'https://digitip-payment.onrender.com' // Allow requests from this origin
+    origin: 'https://digitip-payment.onrender.com' // Allow requests only from the specified frontend origin
 }));
 
 // Initialize Firebase Admin SDK
-const serviceAccount = require('./serviceAccountKey.json'); // Ensure the path is correct
+const serviceAccount = require('./serviceAccountKey.json'); // Ensure this path is correct
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -23,7 +23,7 @@ admin.initializeApp({
 const db = admin.firestore();
 const paymentsCollection = db.collection('payments');
 
-// Payment endpoint
+// Endpoint to handle payment processing
 app.post('/api/payments', async (req, res) => {
     try {
         const paymentData = req.body;
@@ -41,9 +41,14 @@ app.post('/api/payments', async (req, res) => {
         res.status(201).json({ message: 'Payment recorded', paymentId: docRef.id });
 
     } catch (error) {
-        console.error('Error saving payment:', error); // Log the exact error
+        console.error('Error saving payment:', error); // Log the exact error for debugging
         res.status(500).json({ error: 'Failed to save payment' });
     }
+});
+
+// Fallback route for undefined routes
+app.use((req, res) => {
+    res.status(404).json({ error: "Endpoint not found" });
 });
 
 // Start the server
