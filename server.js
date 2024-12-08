@@ -14,7 +14,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 
-const serviceAccount = require(path.join(__dirname, 'c9a79-firebase-adminsdk-bkuwa-4383e22c78.json'));
+const serviceAccount = require(path.join(__dirname, 'service.json'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
