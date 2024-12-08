@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const admin = require('firebase-admin');
 
@@ -6,6 +7,9 @@ const app = express();
 const port = 3001; // You can change this if needed
 
 app.use(bodyParser.json());
+app.use(cors({
+    origin: 'http://localhost:8080' // Change this to the origin you want to allow
+}));
 
 
 // Initialize Firebase Admin SDK (REPLACE with your service account key path)
