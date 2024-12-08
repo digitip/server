@@ -1,45 +1,39 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors'); // For handling CORS
 const admin = require('firebase-admin');
 
-// Path to your service account key
-const serviceAccount = require('./serviceAccountKey.json');
-
-// Initialize Firebase Admin SDK
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
 const app = express();
-app.use(cors());
 app.use(bodyParser.json());
 
-// POST endpoint to handle payment processing
-app.post('/payment', async (req, res) => {
-  const { hotelName, billAmount, tipAmount, workerId } = req.body;
+const serviceAccount = require('./path/to/your/serviceAccountKey.json');
 
-  if (!hotelName || !billAmount || !tipAmount || !workerId) {
-    return res.status(400).send({ error: 'Invalid data provided' });
-  }
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
+const db = admin.firestore();
+
+app.post('/savePayment', async (req, res) => {
   try {
-    const db = admin.firestore();
+    const { billAmount, tipAmount, workerID, hotelName } = req.body;
+
+    // Save payment details in Firestore
     await db.collection('payments').add({
+      billAmount,
+      tipAmount,
+      workerID,
       hotelName,
-      billAmount: parseFloat(billAmount),
-      tipAmount: parseFloat(tipAmount),
-      workerId,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
-    res.status(201).send({ message: 'Payment processed successfully' });
-  } catch (err) {
-    console.error('Error processing payment:', err);
-    res.status(500).send({ error: 'Error processing payment', details: err.message });
+
+    res.send({ success: true });
+  } catch (error) {
+    console.error('Error saving payment details:', error);
+    res.status(500).send({ success: false, error: error.message });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
