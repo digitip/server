@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
+const cors = require('cors');  // Add this line
 const admin = require('firebase-admin');
 const path = require('path');
 
@@ -14,7 +14,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type'],
 }));
 
-const serviceAccount = require(path.join(__dirname, 'service.json'));
+const serviceAccount = require(path.join(__dirname, 'c9a79-firebase-adminsdk-bkuwa-4383e22c78.json'));
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
