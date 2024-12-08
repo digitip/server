@@ -10,6 +10,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "firebase-admin": "^13.0.1"
+    "firebase-admin": "^13.0.1",
+    "express": "^4.18.2"
+
   }
 }
