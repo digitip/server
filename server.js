@@ -27,9 +27,11 @@ const paymentsCollection = db.collection('payments');
 app.post('/api/payments', async (req, res) => {
     try {
         const paymentData = req.body;
+        console.log('Received payment data:', paymentData); // Log the incoming data
 
         // Basic input validation
         if (!paymentData.billAmount || !paymentData.tipAmount || !paymentData.workerID) {
+            console.log('Validation failed: Missing required fields');
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -38,6 +40,7 @@ app.post('/api/payments', async (req, res) => {
 
         // Save payment data to Firestore
         const docRef = await paymentsCollection.add(paymentData);
+        console.log('Payment recorded:', docRef.id);
         res.status(201).json({ message: 'Payment recorded', paymentId: docRef.id });
 
     } catch (error) {
