@@ -35,10 +35,10 @@ app.post('/savePayment', async (req, res) => {
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    res.send({ success: true });
+   res.status(200).send({ success: true });
   } catch (error) {
-    console.error('Error saving payment details:', error);
-    res.status(500).send({ success: false, error: error.message });
+    console.error(error); // Logs the error for debugging
+    res.status(500).send({ error: 'Internal Server Error' });
   }
 });
 
